@@ -18,6 +18,15 @@ export async function loadPrices(): Promise<PriceBook> {
   return text ? (JSON.parse(text) as { items: PriceBook }).items : {}
 }
 
+/** The price a part usually sells at: the most frequent unit price in recent history, newest on ties. */
+export function listPrice(history: SoldPrice[]): SoldPrice | null {
+  if (!history.length) return null
+  const counts = new Map<number, number>()
+  for (const h of history) counts.set(h.unitPrice, (counts.get(h.unitPrice) ?? 0) + 1)
+  const best = Math.max(...counts.values())
+  return history.find((h) => counts.get(h.unitPrice) === best) ?? null
+}
+
 export async function refreshPrices(force = false, concurrency = 4): Promise<PriceBook> {
   return cached<PriceBook>('reference', 'jb2-prod-prices', async () => {
     const parts = (await listParts()).filter((p) => SELLABLE_CODES.has(String(p.raw.productCode ?? '')) && p.raw.active !== false)
@@ -27,8 +36,9 @@ export async function refreshPrices(force = false, concurrency = 4): Promise<Pri
     await Promise.all(Array.from({ length: concurrency }, async () => {
       for (let p = queue.shift(); p; p = queue.shift()) {
         try {
-          const [latest] = await priceHistory(p.partNumber, 10)
-          if (latest) book[p.partNumber] = latest
+          const history = await priceHistory(p.partNumber, 12)
+          const list = listPrice(history)
+          if (list) book[p.partNumber] = list
         } catch (error) {
           console.error('\nprice lookup failed', p.partNumber, error instanceof Error ? error.message : error)
         }

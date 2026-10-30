@@ -6,7 +6,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { loadCorpus } from '../corpus/load.js'
 import { catalogueDigest, loadCatalogue, type CatalogueItem } from '../knowledge/catalogue.js'
 import type { Exchange } from '../corpus/types.js'
-import { buildStyleGuide } from './styleGuide.js'
+import { buildStyleGuide, NOTES_SEPARATOR } from './styleGuide.js'
 import { makeTools } from './tools.js'
 
 export const MODEL = 'claude-opus-5-5'
@@ -17,10 +17,16 @@ export interface DraftInput {
   body: string
   /** Earlier messages in the thread, oldest first, if the caller has them. */
   thread?: { from: string; text: string }[]
+  /** Attachment file names on the customer's email, if any. */
+  attachments?: string[]
+  /** ISO date to treat as "today" (defaults to now). The eval replays old mail with its original date. */
+  asOf?: string
 }
 
 export interface DraftResult {
   draft: string
+  /** What the bot wants Rachel to check before sending. */
+  notes: string
   toolCalls: { name: string; input: unknown }[]
   usage: { input: number; output: number; cacheRead: number; cacheWrite: number }
   stopReason: string | null
@@ -28,27 +34,34 @@ export interface DraftResult {
 
 let knowledge: Promise<{ corpus: Exchange[]; catalogue: CatalogueItem[]; system: Anthropic.Beta.BetaTextBlockParam[] }> | null = null
 
+/** Build knowledge from an explicit corpus (used by the eval to hold examples out). */
+export async function buildKnowledge(corpus: Exchange[], catalogue: CatalogueItem[]) {
+  const system: Anthropic.Beta.BetaTextBlockParam[] = [
+    { type: 'text', text: buildStyleGuide(corpus) },
+    { type: 'text', text: `## Digital catalogue (part | name | dimensions | last sold price)\n${catalogueDigest(catalogue)}`, cache_control: { type: 'ephemeral', ttl: '1h' } }
+  ]
+  return { corpus, catalogue, system }
+}
+
 export function loadKnowledge(force = false) {
   if (force || !knowledge) {
     knowledge = (async () => {
       const [corpus, catalogue] = await Promise.all([loadCorpus(), loadCatalogue()])
-      const system: Anthropic.Beta.BetaTextBlockParam[] = [
-        { type: 'text', text: buildStyleGuide(corpus) },
-        { type: 'text', text: `## Digital catalogue (part | name | dimensions | list price)\n${catalogueDigest(catalogue)}`, cache_control: { type: 'ephemeral', ttl: '1h' } }
-      ]
-      return { corpus, catalogue, system }
+      return buildKnowledge(corpus, catalogue)
     })()
   }
   return knowledge
 }
 
-export async function draftReply(input: DraftInput, client = new Anthropic()): Promise<DraftResult> {
-  const { corpus, catalogue, system } = await loadKnowledge()
+export async function draftReply(input: DraftInput, client = new Anthropic(), knowledgeOverride?: Awaited<ReturnType<typeof loadKnowledge>>): Promise<DraftResult> {
+  const { corpus, catalogue, system } = knowledgeOverride ?? await loadKnowledge()
   const tools = makeTools(catalogue, corpus, input.from)
   const thread = input.thread?.length
     ? `\n\nEarlier in this thread (oldest first):\n${input.thread.map((m) => `--- ${m.from}\n${m.text}`).join('\n')}`
     : ''
-  const user = `From: ${input.from}\nSubject: ${input.subject}\n\n${input.body}${thread}\n\nDraft Rachel's reply.`
+  const today = new Date(input.asOf ?? Date.now()).toDateString()
+  const attachments = input.attachments?.length ? `\nAttachments on this email: ${input.attachments.join(', ')} (you cannot open them)` : '\nAttachments: none'
+  const user = `Today is ${today}.\nFrom: ${input.from}\nSubject: ${input.subject}${attachments}\n\n${input.body}${thread}\n\nDraft Rachel's reply.`
 
   const toolCalls: { name: string; input: unknown }[] = []
   const runner = client.beta.messages.toolRunner({
@@ -82,5 +95,6 @@ export async function draftReply(input: DraftInput, client = new Anthropic()): P
     }
   }
   if (stopReason === 'refusal') draft = ''
-  return { draft, toolCalls, usage, stopReason }
+  const [body, ...rest] = draft.split(NOTES_SEPARATOR)
+  return { draft: body.trim(), notes: rest.join(NOTES_SEPARATOR).trim(), toolCalls, usage, stopReason }
 }

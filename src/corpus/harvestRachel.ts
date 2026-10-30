@@ -24,7 +24,9 @@ const OUT_DIR = join(config.DATA_DIR, 'corpus')
 const OUT = join(OUT_DIR, 'rachel.jsonl')
 const SEEN = join(OUT_DIR, 'rachel.seen.json')
 
-const INTERNAL = new Set(['bulmanproducts.com'])
+// Bulman plus affiliated companies and vendors Rachel deals with as a colleague, not a customer.
+const INTERNAL = new Set(['bulmanproducts.com', 'viscommproducts.com'])
+const SKIP_SUBJECT = /\b(payroll|insurance|benefit|401k|employee navigator|w-?2|time ?off|pto)\b/i
 const addr = (m?: GraphMessage) => m?.from?.emailAddress?.address?.toLowerCase() ?? ''
 const domain = (a: string) => a.split('@')[1] ?? ''
 
@@ -44,6 +46,7 @@ for (const msg of sent) {
   const to = msg.toRecipients?.map((r) => r.emailAddress?.address?.toLowerCase() ?? '').filter(Boolean) ?? []
   const customer = to.find((a) => !INTERNAL.has(domain(a)))
   if (!customer) { skipped++; seen.add(msg.id); continue } // internal-only mail
+  if (SKIP_SUBJECT.test(msg.subject ?? '')) { skipped++; seen.add(msg.id); continue }
   const reply = cleanReply(msg.body?.content ?? '')
   if (reply.length < 15) { skipped++; seen.add(msg.id); continue } // "Thanks!" only
 
@@ -58,6 +61,7 @@ for (const msg of sent) {
     const inboundMsg = [...earlier].reverse().find((m) => !INTERNAL.has(domain(addr(m))))
     const attachments = msg.hasAttachments ? (await listAttachmentNames(msg.id, MAILBOX)).map((a) => a.name) : []
     const inbound = inboundMsg ? cleanInbound(inboundMsg.body?.content ?? '') : null
+    const inboundAttachments = inboundMsg?.hasAttachments ? (await listAttachmentNames(inboundMsg.id, MAILBOX)).map((a) => a.name) : []
     const all = `${msg.subject ?? ''}\n${inbound ?? ''}\n${reply}`
 
     const exchange: Exchange = {
@@ -76,6 +80,7 @@ for (const msg of sent) {
         text: (INTERNAL.has(domain(addr(m))) ? cleanReply : cleanInbound)(m.body?.content ?? '').slice(0, 2000)
       })),
       attachments,
+      inboundAttachments,
       topic: classifyTopic(all),
       partNumbers: extractPartNumbers(all),
       prices: extractPrices(reply)

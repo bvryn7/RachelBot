@@ -17,4 +17,5 @@ if (!body) {
 }
 const result = await draftReply({ from, subject, body })
 console.log(result.draft || `(no draft: stop_reason=${result.stopReason})`)
+if (result.notes) console.log(`\n[notes for Rachel] ${result.notes}`)
 console.error(`\n-- tools: ${result.toolCalls.map((t) => t.name).join(', ') || 'none'} | in=${result.usage.input} out=${result.usage.output} cacheRead=${result.usage.cacheRead} cacheWrite=${result.usage.cacheWrite}`)

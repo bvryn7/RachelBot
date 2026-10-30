@@ -18,7 +18,8 @@ const SIGNATURE_MARKERS = [
   /^Office Manager\s*$/im,
   /^Bulman Products\s*$/im,
   /^1650 McReynolds/im,
-  /^You don't often get email from/im
+  /^You don't often get email from/im,
+  /^\*\*\d{1,2}\/\d{1,2}\/\d{2,4} NEW:/im
 ]
 
 export function stripQuoted(text: string): string {
@@ -43,6 +44,8 @@ export function stripSignature(text: string): { body: string; signoff: string | 
 
 export function stripLinkNoise(text: string): string {
   return text
+    .replace(/\r/g, '')
+    .replace(/^This message has \d+ attachments?\.?\s*$/gim, '')
     .replace(/<https?:\/\/[^>]+>/g, '')
     .replace(/<mailto:[^>]+>/g, '')
     .replace(/\[cid:[^\]]+\]/g, '')

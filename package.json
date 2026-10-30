@@ -18,7 +18,8 @@
     "knowledge:build": "tsx src/knowledge/build.ts",
     "jb2:refresh": "tsx src/jobboss/refresh.ts",
     "draft": "tsx src/bot/cli.ts",
-    "knowledge:prices": "tsx src/knowledge/prices.ts"
+    "knowledge:prices": "tsx src/knowledge/prices.ts",
+    "eval": "tsx src/eval/run.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

@@ -19,7 +19,8 @@ const DraftBody = z.object({
   from: z.string().email(),
   subject: z.string().default(''),
   body: z.string().min(1),
-  thread: z.array(z.object({ from: z.string(), text: z.string() })).optional()
+  thread: z.array(z.object({ from: z.string(), text: z.string() })).optional(),
+  attachments: z.array(z.string()).optional()
 })
 
 app.post('/draft', async (req, res) => {

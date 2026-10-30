@@ -24,10 +24,17 @@ auto quoting, dimensions, product information, email history (tone and context),
 | Cache layer + JB2 read client | Done, verified: 5,247 parts, 1,630 customers |
 | Graph read client | Done, verified against both mailboxes |
 | Corpus harvest + cleaning | Done; first 80 replies looked right (quotes with part numbers and prices survive, signatures and quoted history stripped) |
-| Price book | Script done; first full run in progress |
+| Price book | Done: 402 of 852 sellable parts priced from order lines |
 | Catalogue build | Done; 429 of 5,249 parts had dimensions mined from descriptions |
-| Draft bot + tools | Done, typechecks; live test pending |
+| Draft bot + tools | Done, live tested; `npm run eval` grades hold-out cases |
 | API server | Done, untested beyond typecheck |
+
+## Eval log (hold-out: real customer question in, bot draft graded against what Rachel actually sent, 1-5)
+| Date | n | tone | facts | helpful | What changed before this run |
+|---|---|---|---|---|---|
+| 2026-10-30 a | 8 | 4.38 | 2.50 | 2.75 | Baseline: style guide + catalogue + tools |
+
+Findings from run a: bot did not know the date (replayed Jan emails and mentioned the Jan 1 increase), left a [DISTRIBUTOR NAME] placeholder, invented a prior email, quoted before asking reseller vs end user, and could not see attachments Rachel had. Fixes: `data/knowledge/facts.md` standing answers, date + attachment names in the prompt, no-placeholder rule, notes capped at 3 lines, catalogue price = usual recent price not last sale.
 
 ## Next
 1. Full corpus harvest (1,500 replies, 2 years) and review the topic mix.
