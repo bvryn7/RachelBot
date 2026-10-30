@@ -7,3 +7,4 @@ data/*.jsonl
 
 # Azure OCR results (customer documents)
 data/docintel/
+data/eval/
