@@ -38,10 +38,14 @@ auto quoting, dimensions, product information, email history (tone and context),
 | 2026-10-30 b | 8 | 4.38 | 3.13 | 3.25 | facts.md, date + attachment names, no placeholders, usual price |
 | 2026-10-30 c | 12 | 4.33 | 3.08 | 3.17 | Full 8,870-exchange corpus, PDF text, sender -> JB2 account (new 12-case set, not comparable to a/b) |
 | 2026-10-30 d | 12 | 4.67 | 3.67 | 2.92 | Rules: unreadable attachments are not "missing", failed lookups go to notes not the customer, answer only what was asked |
+| 2026-10-30 e | 12 | 4.25 | 3.42 | 3.08 | Always look up every named product + price before drafting; give the price when the system has it |
+| 2026-10-30 f | 12 | 4.50 | 3.83 | 3.08 | Grader told the bot has ERP access and cannot see images (same bot as run e; earlier runs under-scored ERP prices as "invented") |
 
 Findings from run a: bot did not know the date (replayed Jan emails and mentioned the Jan 1 increase), left a [DISTRIBUTOR NAME] placeholder, invented a prior email, quoted before asking reseller vs end user, and could not see attachments Rachel had. Fixes: `data/knowledge/facts.md` standing answers, date + attachment names in the prompt, no-placeholder rule, notes capped at 3 lines, catalogue price = usual recent price not last sale.
 
 Run d trade-off: fewer invented facts, slightly less helpful because the bot now defers attachment-dependent answers to Rachel. Judge still penalises answers that needed photos or image attachments the bot cannot read in the eval.
+
+Run-to-run noise with 12 cases is roughly +/-0.3; judge changes by a point or more only when a rule changes behaviour. Remaining low scores: the bot still prefers "I will check" over a direct answer when a lookup is ambiguous, and forwarded (FW:) threads where it answers the forwarder instead of the end customer.
 
 ## Next
 1. Full corpus harvest (1,500 replies, 2 years) and review the topic mix.

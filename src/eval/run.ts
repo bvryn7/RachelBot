@@ -40,7 +40,9 @@ async function grade(e: Exchange, draft: string): Promise<Grade> {
     max_tokens: 600,
     output_config: { effort: 'low' },
     system: 'You grade a drafted customer-service email against the reply a human expert actually sent. Return JSON only.',
-    messages: [{ role: 'user', content: `Customer wrote:\n${e.inbound}\n\nRachel actually replied:\n${e.reply}\n\nBot draft:\n${draft}\n\nScore 1-5 each: tone (does it sound like Rachel: brief, warm, plain), facts (no invented prices/parts/promises; agrees with Rachel's facts where she gave any), helpful (answers what was asked or asks the right clarifying question). Then a one-sentence verdict.\nJSON: {"tone":n,"facts":n,"helpful":n,"verdict":"..."}` }]
+    messages: [{ role: 'user', content: `Customer wrote:\n${e.inbound}\n\nRachel actually replied:\n${e.reply}\n\nBot draft:\n${draft}\n\nThe bot could read the live ERP (part master, sold prices, orders) and Rachel's past emails, but could NOT see image attachments. Prices and part numbers it quotes from the ERP are not inventions unless they contradict what Rachel said; a clarifying question where Rachel clearly relied on an attachment is reasonable, not a failure.
+
+Score 1-5 each: tone (does it sound like Rachel: brief, warm, plain), facts (nothing contradicts Rachel, no made-up promises, dimensions or product claims), helpful (gives the answer Rachel gave, or the best possible answer from the information it could see). Then a one-sentence verdict.\nJSON: {"tone":n,"facts":n,"helpful":n,"verdict":"..."}` }]
   })
   const text = res.content.filter((b): b is Anthropic.TextBlock => b.type === 'text').map((b) => b.text).join('')
   const m = text.match(/\{[\s\S]*\}/)
