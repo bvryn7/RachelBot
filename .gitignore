@@ -4,3 +4,6 @@ dist/
 data/corpus/
 data/reference/
 data/*.jsonl
+
+# Azure OCR results (customer documents)
+data/docintel/

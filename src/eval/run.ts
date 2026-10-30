@@ -3,7 +3,8 @@
  * exchanges from the bot, draft a reply, and have Claude grade the draft against
  * what Rachel actually sent. Writes data/eval/<timestamp>.md and prints the mean.
  *
- *   npm run eval -- [n=8] [topics=quote,dimensions,product_info,availability]
+ *   npm run eval -- [n=8] [topics=quote,dimensions,product_info,availability] [attachments]
+ * Pass "attachments" as the third arg to pick only cases where the customer attached a file we could read.
  */
 import Anthropic from '@anthropic-ai/sdk'
 import { mkdir, writeFile } from 'node:fs/promises'
@@ -16,6 +17,7 @@ import { buildKnowledge, draftReply, MODEL } from '../bot/draftReply.js'
 
 const N = Number(process.argv[2] ?? 8)
 const TOPICS = new Set((process.argv[3] ?? 'quote,dimensions,product_info,availability').split(',') as Topic[])
+const ONLY_ATTACHMENTS = process.argv[4] === 'attachments'
 
 const corpus = await loadCorpus()
 const catalogue = await loadCatalogue()
@@ -24,6 +26,7 @@ const client = new Anthropic()
 // Deterministic pick: oldest-first within eligible, spread over topics, so reruns compare like with like.
 const eligible = corpus
   .filter((e) => e.inbound && e.inbound.length > 40 && e.reply.length > 40 && TOPICS.has(e.topic))
+  .filter((e) => !ONLY_ATTACHMENTS || Boolean(e.inboundAttachmentText))
   .sort((a, b) => a.sentAt.localeCompare(b.sentAt))
 const picked: Exchange[] = []
 for (let i = 0; picked.length < N && i < eligible.length; i++) {
@@ -59,7 +62,7 @@ for (const [i, e] of picked.entries()) {
   rows.push(`## ${i + 1}. [${e.topic}] ${e.subject}\n**Customer (${e.customerEmail}, ${e.sentAt.slice(0, 10)}):**\n\n${e.inbound}\n\n**Rachel actually sent:**\n\n${e.reply}\n\n**Bot draft:**\n\n${result.draft}\n\n**Bot notes:** ${result.notes || 'none'}\n\n**Tools:** ${result.toolCalls.map((t) => t.name).join(', ') || 'none'}\n\n**Grade:** tone ${g.tone} · facts ${g.facts} · helpful ${g.helpful} — ${g.verdict}\n`)
 }
 const n = picked.length || 1
-const summary = `# Eval ${new Date().toISOString()}\n\nmodel ${MODEL}, ${picked.length} held-out exchanges, corpus ${corpus.length}, catalogue ${catalogue.length}\n\n| tone | facts | helpful |\n|---|---|---|\n| ${(totals.tone / n).toFixed(2)} | ${(totals.facts / n).toFixed(2)} | ${(totals.helpful / n).toFixed(2)} |\n\n`
+const summary = `# Eval ${new Date().toISOString()}\n\nmodel ${MODEL}, ${picked.length} held-out exchanges${ONLY_ATTACHMENTS ? ' (attachment cases only)' : ''}, corpus ${corpus.length}, catalogue ${catalogue.length}\n\n| tone | facts | helpful |\n|---|---|---|\n| ${(totals.tone / n).toFixed(2)} | ${(totals.facts / n).toFixed(2)} | ${(totals.helpful / n).toFixed(2)} |\n\n`
 const dir = join(config.DATA_DIR, 'eval')
 await mkdir(dir, { recursive: true })
 const file = join(dir, `${new Date().toISOString().replace(/[:.]/g, '-')}.md`)
