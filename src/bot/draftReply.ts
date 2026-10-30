@@ -19,6 +19,10 @@ export interface DraftInput {
   thread?: { from: string; text: string }[]
   /** Attachment file names on the customer's email, if any. */
   attachments?: string[]
+  /** Text extracted from the customer's attachments (PDF item lists, drawings). */
+  attachmentText?: string
+  /** Image attachments (photos of a unit, screenshots of a price list) for Claude to look at. */
+  images?: { mediaType: 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp'; data: string }[]
   /** ISO date to treat as "today" (defaults to now). The eval replays old mail with its original date. */
   asOf?: string
 }
@@ -60,8 +64,15 @@ export async function draftReply(input: DraftInput, client = new Anthropic(), kn
     ? `\n\nEarlier in this thread (oldest first):\n${input.thread.map((m) => `--- ${m.from}\n${m.text}`).join('\n')}`
     : ''
   const today = new Date(input.asOf ?? Date.now()).toDateString()
-  const attachments = input.attachments?.length ? `\nAttachments on this email: ${input.attachments.join(', ')} (you cannot open them)` : '\nAttachments: none'
-  const user = `Today is ${today}.\nFrom: ${input.from}\nSubject: ${input.subject}${attachments}\n\n${input.body}${thread}\n\nDraft Rachel's reply.`
+  const attachments = input.attachments?.length
+    ? `\nAttachments on this email: ${input.attachments.join(', ')}${input.attachmentText || input.images?.length ? '' : ' (contents not available to you)'}`
+    : '\nAttachments: none'
+  const attachmentText = input.attachmentText ? `\n\nText of the attachments:\n${input.attachmentText.slice(0, 12000)}` : ''
+  const user = `Today is ${today}.\nFrom: ${input.from}\nSubject: ${input.subject}${attachments}\n\n${input.body}${thread}${attachmentText}\n\nDraft Rachel's reply.`
+  const content: Anthropic.Beta.BetaContentBlockParam[] = [
+    ...(input.images ?? []).slice(0, 4).map((img): Anthropic.Beta.BetaImageBlockParam => ({ type: 'image', source: { type: 'base64', media_type: img.mediaType, data: img.data } })),
+    { type: 'text', text: user }
+  ]
 
   const toolCalls: { name: string; input: unknown }[] = []
   const runner = client.beta.messages.toolRunner({
@@ -72,7 +83,7 @@ export async function draftReply(input: DraftInput, client = new Anthropic(), kn
     fallbacks: 'default',
     system,
     tools,
-    messages: [{ role: 'user', content: user }],
+    messages: [{ role: 'user', content }],
     stream: false
   })
 

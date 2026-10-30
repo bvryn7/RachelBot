@@ -51,7 +51,7 @@ const rows: string[] = []
 const totals = { tone: 0, facts: 0, helpful: 0 }
 for (const [i, e] of picked.entries()) {
   process.stdout.write(`\r  drafting ${i + 1}/${picked.length}`)
-  const result = await draftReply({ from: e.customerEmail, subject: e.subject, body: e.inbound!, attachments: e.inboundAttachments ?? [], asOf: e.inboundAt ?? e.sentAt }, client, knowledge)
+  const result = await draftReply({ from: e.customerEmail, subject: e.subject, body: e.inbound!, attachments: e.inboundAttachments ?? [], attachmentText: e.inboundAttachmentText ?? undefined, asOf: e.inboundAt ?? e.sentAt }, client, knowledge)
   const g = await grade(e, result.draft)
   totals.tone += g.tone; totals.facts += g.facts; totals.helpful += g.helpful
   rows.push(`## ${i + 1}. [${e.topic}] ${e.subject}\n**Customer (${e.customerEmail}, ${e.sentAt.slice(0, 10)}):**\n\n${e.inbound}\n\n**Rachel actually sent:**\n\n${e.reply}\n\n**Bot draft:**\n\n${result.draft}\n\n**Bot notes:** ${result.notes || 'none'}\n\n**Tools:** ${result.toolCalls.map((t) => t.name).join(', ') || 'none'}\n\n**Grade:** tone ${g.tone} · facts ${g.facts} · helpful ${g.helpful} — ${g.verdict}\n`)

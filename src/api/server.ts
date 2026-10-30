@@ -20,7 +20,9 @@ const DraftBody = z.object({
   subject: z.string().default(''),
   body: z.string().min(1),
   thread: z.array(z.object({ from: z.string(), text: z.string() })).optional(),
-  attachments: z.array(z.string()).optional()
+  attachments: z.array(z.string()).optional(),
+  attachmentText: z.string().optional(),
+  images: z.array(z.object({ mediaType: z.enum(['image/png', 'image/jpeg', 'image/gif', 'image/webp']), data: z.string() })).optional()
 })
 
 app.post('/draft', async (req, res) => {

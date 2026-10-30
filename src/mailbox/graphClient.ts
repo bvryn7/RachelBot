@@ -114,6 +114,16 @@ export async function getConversation(conversationId: string, mailboxAddress = c
 }
 
 export interface GraphAttachmentMeta { name: string; contentType: string; size: number }
+export interface GraphAttachment extends GraphAttachmentMeta { '@odata.type': string; contentBytes?: string }
+
+/** File attachments with content (base64) for files up to `maxBytes`; larger ones come back without bytes. */
+export async function getAttachments(messageId: string, mailboxAddress = config.GRAPH_MAILBOX!, maxBytes = 3_000_000): Promise<GraphAttachment[]> {
+  const mailbox = encodeURIComponent(mailboxAddress)
+  const page: { value: GraphAttachment[] } = await graphGet(`/users/${mailbox}/messages/${messageId}/attachments`)
+  return page.value
+    .filter((a) => a['@odata.type'] === '#microsoft.graph.fileAttachment')
+    .map((a) => (a.size > maxBytes ? { ...a, contentBytes: undefined } : a))
+}
 
 export async function listAttachmentNames(messageId: string, mailboxAddress = config.GRAPH_MAILBOX!): Promise<GraphAttachmentMeta[]> {
   const mailbox = encodeURIComponent(mailboxAddress)

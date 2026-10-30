@@ -27,6 +27,8 @@ export interface Exchange {
   attachments: string[]
   /** Attachment names on the customer's message she answered. */
   inboundAttachments: string[]
+  /** Text pulled from the customer's PDF attachments (item lists, drawings), when any. */
+  inboundAttachmentText: string | null
   topic: Topic
   /** Part numbers mentioned anywhere in the exchange. */
   partNumbers: string[]

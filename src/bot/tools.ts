@@ -71,8 +71,8 @@ export function makeTools(catalogue: CatalogueItem[], corpus: Exchange[], custom
     description: 'What Rachel told this same customer before (by email domain) and how she answered similar questions from anyone. Use it to stay consistent on prices and promises.',
     inputSchema: z.object({ question: z.string().describe('The customer question, used to find similar past exchanges') }),
     run: async ({ question }) => asJson({
-      thisCustomer: historyFor(corpus, customerEmail, 5).map((e) => ({ when: e.sentAt, subject: e.subject, theyAsked: e.inbound, rachelSaid: e.reply })),
-      similar: similarExchanges(corpus, question, 5).map((e) => ({ when: e.sentAt, subject: e.subject, theyAsked: e.inbound, rachelSaid: e.reply }))
+      thisCustomer: historyFor(corpus, customerEmail, 5).map((e) => ({ when: e.sentAt.slice(0, 10), subject: e.subject, theyAsked: e.inbound, theirAttachment: e.inboundAttachmentText?.slice(0, 600) ?? undefined, rachelSaid: e.reply })),
+      similar: similarExchanges(corpus, question, 5).map((e) => ({ when: e.sentAt.slice(0, 10), subject: e.subject, theyAsked: e.inbound, rachelSaid: e.reply }))
     })
   })
 
