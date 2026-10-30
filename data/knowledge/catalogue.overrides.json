@@ -1,0 +1,6 @@
+{
+  "_comment": "Hand-maintained facts the ERP does not hold. Key = JB2 part number. Any field of CatalogueItem may be set; dimensions is the important one. Example entries below are placeholders: replace with real values from the printed catalogue.",
+  "A500-24": { "name": "A500 paper cutter, 24 in", "family": "Cutters & blades", "dimensions": "Cuts rolls up to 24\" wide" },
+  "M761R": { "name": "Deluxe ribbon dispenser with cutter", "family": "Dispensers" },
+  "M724": { "name": "Curling ribbon tree, 24 roll", "family": "Dispensers" }
+}
