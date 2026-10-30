@@ -15,6 +15,7 @@ client only has a GET path. Output is a draft for Rachel to review.
 | `src/jobboss/prodReadClient.ts` | `src/jobboss/prodReadClient.ts` | Same GET-only client; adds `priceHistory` (order lines are where JB2 keeps prices) |
 | `src/mailbox/graphClient.ts` | `src/mailbox/graphMailbox.ts` | List/conversation/attachments only. The PATCH path was deliberately not ported |
 | `src/util/retry.ts` | `src/util/retry.ts` | Unchanged |
+| `src/vision/docIntel.ts`, `mapInvoiceToPo.ts` | `src/extraction/documentIntelligence.ts`, `mapInvoiceToPo.ts` | Generalised to any model (prebuilt-read for photos/scans, prebuilt-invoice for POs), disk-cached by content hash, in-memory buffers instead of file paths |
 | `src/config.ts` | `src/config.ts` | Same zod pattern, fewer keys, plus `RACHEL_MAILBOX` |
 
 Hard rule inherited: nothing newer than `GRAPH_MIN_AGE_DAYS` (min 25) is ever read.

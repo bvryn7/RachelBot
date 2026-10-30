@@ -7,7 +7,8 @@
  * the shared bulman@ mailbox but Outlook files the sent copy in her own Sent Items
  * (bulman@ Sent Items is empty). For each sent message we pull the conversation so
  * the bot learns question -> answer pairs, the thread for context, and the text of
- * any PDF the customer attached (item lists, drawings, POs).
+ * any PDF or image the customer attached (item lists, drawings, POs, photos of a unit);
+ * images and scanned PDFs are read with Azure Document Intelligence when configured.
  *
  * Incremental: message ids already in rachel.seen.json are skipped, so reruns only
  * add new mail. Hard rule inherited from order entry: nothing newer than
@@ -18,7 +19,7 @@ import { join } from 'node:path'
 import { config } from '../config.js'
 import { getAttachments, getConversation, listMessages, type GraphMessage } from '../mailbox/graphClient.js'
 import { cleanInbound, cleanReply } from '../mailbox/cleanBody.js'
-import { isPdf, pdfText } from '../util/pdfText.js'
+import { attachmentToText } from '../vision/docIntel.js'
 import { classifyTopic, extractPartNumbers, extractPrices } from './classify.js'
 import type { Exchange } from './types.js'
 
@@ -32,7 +33,7 @@ const MAILBOX = config.RACHEL_MAILBOX
 
 // Bulman plus affiliated companies and vendors Rachel deals with as a colleague, not a customer.
 const INTERNAL = new Set(['bulmanproducts.com', 'viscommproducts.com'])
-const SKIP_SUBJECT = /\b(payroll|insurance|benefit|401k|employee navigator|w-?2|time ?off|pto)\b/i
+const SKIP_SUBJECT = /\b(payroll|insurance|benefit|401\s*\(?k\)?|paychex|employee navigator|w-?2|time ?off|pto)\b/i
 const addr = (m?: GraphMessage) => m?.from?.emailAddress?.address?.toLowerCase() ?? ''
 const domain = (a: string) => a.split('@')[1] ?? ''
 
@@ -57,10 +58,9 @@ async function attachmentInfo(m: GraphMessage): Promise<{ names: string[]; text:
   const atts = await getAttachments(m.id, MAILBOX)
   const texts: string[] = []
   for (const a of atts) {
-    if (a.contentBytes && isPdf(a.name, a.contentType)) {
-      const t = await pdfText(Buffer.from(a.contentBytes, 'base64'))
-      if (t) texts.push(`--- ${a.name}\n${t.slice(0, 4000)}`)
-    }
+    if (!a.contentBytes) continue
+    const t = await attachmentToText(a.name, a.contentType, Buffer.from(a.contentBytes, 'base64'), m.subject ?? '')
+    if (t) texts.push(`--- ${a.name}\n${t.slice(0, 4000)}`)
   }
   return { names: atts.map((a) => a.name), text: texts.join('\n\n') }
 }

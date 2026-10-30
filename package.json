@@ -15,6 +15,7 @@
     "test": "vitest run",
     "corpus:harvest": "tsx src/corpus/harvestRachel.ts",
     "corpus:stats": "tsx src/corpus/stats.ts",
+    "corpus:ocr": "tsx src/corpus/backfillOcr.ts",
     "knowledge:build": "tsx src/knowledge/build.ts",
     "jb2:refresh": "tsx src/jobboss/refresh.ts",
     "draft": "tsx src/bot/cli.ts",

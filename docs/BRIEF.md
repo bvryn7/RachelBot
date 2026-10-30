@@ -13,6 +13,7 @@ auto quoting, dimensions, product information, email history (tone and context),
 - 2026-10-30 Sellable = JB2 product codes CUTTER, RACKS, SLIDECUTTER, DRYING RACKS, TABLES, GIFT WRAP, MISC SOLD, SPECIALTY, FOOD, CUSTOM. Cartons, tubing, steel, paint are kept in the catalogue but hidden from the prompt digest.
 - 2026-10-30 Sender email -> JB2 account via /contacts (5,310 contact emails) and customer website domain; the bot sees what that account paid before.
 - 2026-10-30 Customer PDF attachments are text-extracted (pdf-parse) in the corpus and accepted on /draft (attachmentText, images) so item lists and photos are visible to the bot.
+- 2026-10-30 Azure Document Intelligence ported from order entry (`src/vision/`): prebuilt-read turns photos, screenshots and scanned PDFs into text; prebuilt-invoice pulls PO number / ship-to / lines off customer POs. Results cached by content hash in `data/docintel/` so backfill and eval never re-pay. Signature logos (image001.png) skipped. Same Azure resource and keys as order entry.
 - 2026-10-30 Model `claude-opus-5-5`, effort medium, catalogue digest cached 1 h in the system prompt, server-side refusal fallback on.
 - Bot output is a draft only. No sending, no mailbox writes, no JB2 writes.
 
@@ -29,7 +30,8 @@ auto quoting, dimensions, product information, email history (tone and context),
 | Price book | Done: 402 of 852 sellable parts priced from order lines |
 | Catalogue build | Done; 429 of 5,249 parts had dimensions mined from descriptions |
 | Draft bot + tools | Done, live tested; `npm run eval` grades hold-out cases |
-| API server | Done, untested beyond typecheck |
+| API server | Done, untested beyond typecheck. `/draft` now also takes `files[]` (name + base64) and extracts text server-side |
+| Azure vision (photos, scanned PDFs, POs) | Done; smoke-tested on real POs (PO number, ship-to, lines read at confidence 1.0). Corpus backfill `npm run corpus:ocr` over the 539 exchanges with unread PDF/image attachments: running |
 
 ## Eval log (hold-out: real customer question in, bot draft graded against what Rachel actually sent, 1-5)
 | Date | n | tone | facts | helpful | What changed before this run |
@@ -48,8 +50,8 @@ Run d trade-off: fewer invented facts, slightly less helpful because the bot now
 Run-to-run noise with 12 cases is roughly +/-0.3; judge changes by a point or more only when a rule changes behaviour. Remaining low scores: the bot still prefers "I will check" over a direct answer when a lookup is ambiguous, and forwarded (FW:) threads where it answers the forwarder instead of the end customer.
 
 ## Next
-1. Full corpus harvest (1,500 replies, 2 years) and review the topic mix.
-2. Run 10 real inbound emails from the corpus through `/draft`, compare against what Rachel actually sent, tune the style guide.
+1. Re-run eval on attachment-heavy cases once the OCR backfill finishes; the eval's known weak spot was photo/scanned attachments the bot could not read.
+2. Reduce "I will check" deferrals when a lookup is ambiguous; answer the end customer, not the forwarder, on FW: threads.
 3. Fill `catalogue.overrides.json` dimensions from the printed catalogue PDF (ask Rachel for the current one).
 4. Decide delivery surface: Outlook add-in, a review queue page like order entry, or drafts dropped into the shared mailbox Drafts folder (would need Mail.ReadWrite).
 5. Inbound classifier so the bot ignores invoices/remittances and only drafts for quote, dimensions, product info, order status.

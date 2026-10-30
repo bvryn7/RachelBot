@@ -25,7 +25,12 @@ const schema = z.object({
   JB2_API_HOST: z.string().url().default('https://api-jb2.integrations.ecimanufacturing.com'),
   JB2_API_KEY: optional(z.string().min(1)),
   JB2_PROD_CLIENT_ID: optional(z.string().min(1)),
-  JB2_PROD_CLIENT_SECRET: optional(z.string().min(1))
+  JB2_PROD_CLIENT_SECRET: optional(z.string().min(1)),
+
+  // Azure AI Document Intelligence (same resource as the order-entry project): reads photos,
+  // screenshots and scanned PDFs the customer attaches, and pulls PO fields off purchase orders.
+  AZURE_DOCINTEL_ENDPOINT: optional(z.string().url()),
+  AZURE_DOCINTEL_KEY: optional(z.string().min(1))
 })
 
 export type Config = z.infer<typeof schema>
@@ -35,3 +40,4 @@ export const isClaudeConfigured = (): boolean => Boolean(config.ANTHROPIC_API_KE
 export const isGraphConfigured = (): boolean =>
   Boolean(config.GRAPH_TENANT_ID && config.GRAPH_CLIENT_ID && config.GRAPH_CLIENT_SECRET && config.GRAPH_MAILBOX)
 export const isJb2Configured = (): boolean => Boolean(config.JB2_PROD_CLIENT_ID && config.JB2_PROD_CLIENT_SECRET)
+export const isDocIntelConfigured = (): boolean => Boolean(config.AZURE_DOCINTEL_ENDPOINT && config.AZURE_DOCINTEL_KEY)
