@@ -33,6 +33,7 @@ auto quoting, dimensions, product information, email history (tone and context),
 | Date | n | tone | facts | helpful | What changed before this run |
 |---|---|---|---|---|---|
 | 2026-10-30 a | 8 | 4.38 | 2.50 | 2.75 | Baseline: style guide + catalogue + tools |
+| 2026-10-30 b | 8 | 4.38 | 3.13 | 3.25 | facts.md, date + attachment names, no placeholders, usual price |
 
 Findings from run a: bot did not know the date (replayed Jan emails and mentioned the Jan 1 increase), left a [DISTRIBUTOR NAME] placeholder, invented a prior email, quoted before asking reseller vs end user, and could not see attachments Rachel had. Fixes: `data/knowledge/facts.md` standing answers, date + attachment names in the prompt, no-placeholder rule, notes capped at 3 lines, catalogue price = usual recent price not last sale.
 
