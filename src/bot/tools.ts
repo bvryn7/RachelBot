@@ -1,6 +1,7 @@
 import * as z from 'zod/v4'
 import { betaZodTool } from '@anthropic-ai/sdk/helpers/beta/zod'
-import { findOrdersByPoNumber, getOrder, listCustomers, priceHistory, recentOrdersForCustomer } from '../jobboss/prodReadClient.js'
+import { findOrdersByPoNumber, getOrder, listContacts, listCustomers, priceHistory, recentOrdersForCustomer, type Jb2Customer } from '../jobboss/prodReadClient.js'
+import { resolveCustomer } from '../knowledge/customerMatch.js'
 import { isJb2Configured } from '../config.js'
 import { findPart, searchCatalogue, type CatalogueItem } from '../knowledge/catalogue.js'
 import { historyFor, similarExchanges } from '../corpus/load.js'
@@ -54,15 +55,31 @@ export function makeTools(catalogue: CatalogueItem[], corpus: Exchange[], custom
 
   const customerOrders = betaZodTool({
     name: 'customer_recent_orders',
-    description: 'Find the customer in JobBoss2 by company name and list their recent orders (what they usually buy, last prices paid).',
-    inputSchema: z.object({ companyName: z.string() }),
+    description: 'Who this sender is in JobBoss2 (matched by their email address, or by company name if you give one), their payment terms, and what they bought recently with the unit prices they paid. Use it to quote the price this account normally gets and to know if they are an existing account or a new contact.',
+    inputSchema: z.object({ companyName: z.string().optional().describe('Only when the sender email does not identify the company') }),
     run: async ({ companyName }) => {
       if (!isJb2Configured()) return asJson({ unavailable: 'JobBoss2 not configured' })
-      const customers = await listCustomers()
-      const needle = companyName.toLowerCase()
-      const hits = customers.filter((c) => c.customerName.toLowerCase().includes(needle)).slice(0, 3)
-      const orders = await Promise.all(hits.map(async (c) => ({ customer: c, orders: await recentOrdersForCustomer(c.customerCode, 8) })))
-      return asJson(orders)
+      const [customers, contacts] = await Promise.all([listCustomers(), listContacts()])
+      let hits: { customer: Jb2Customer; via: string }[] = resolveCustomer(customerEmail, customers, contacts)
+      if (companyName) {
+        const needle = companyName.toLowerCase()
+        for (const c of customers.filter((c) => c.customerName.toLowerCase().includes(needle)).slice(0, 3)) {
+          if (!hits.some((h) => h.customer.customerCode === c.customerCode)) hits.push({ customer: c, via: 'name' })
+        }
+      }
+      if (!hits.length) return asJson({ match: 'none', note: 'No JobBoss2 account or contact matches this sender; treat as a new contact.' })
+      const result = await Promise.all(hits.slice(0, 3).map(async ({ customer, via }) => {
+        const orders = await recentOrdersForCustomer(customer.customerCode, 6)
+        const detailed = await Promise.all(orders.slice(0, 3).map(async (o) => {
+          const full = o.orderNumber ? await getOrder(o.orderNumber).catch(() => null) : null
+          const lines = ((full?.lineItems as Record<string, unknown>[] | undefined) ?? []).map((l) => ({
+            part: l.partNumber, qty: l.quantityOrdered, unitPrice: l.unitPrice, due: l.dueDate, status: l.status
+          }))
+          return { orderNumber: o.orderNumber, po: o.PONumber, date: full?.dateEntered ?? full?.orderDate, lines }
+        }))
+        return { matchedVia: via, customer: { code: customer.customerCode, name: customer.customerName, active: customer.active, terms: customer.termsCode }, recentOrders: detailed }
+      }))
+      return asJson(result)
     }
   })
 

@@ -63,7 +63,8 @@ export interface Jb2Part {
   /** Everything else JB2 sent, kept so the knowledge builder can mine dimensions and weights. */
   raw: Record<string, unknown>
 }
-export interface Jb2Customer { customerCode: string; customerName: string; active: boolean }
+export interface Jb2Customer { customerCode: string; customerName: string; active: boolean; website: string; termsCode: string }
+export interface Jb2Contact { contactCode: string; contact: string; title: string; email: string; active: boolean }
 export interface Jb2Order { orderNumber?: number; PONumber?: string; customerCode?: string; [key: string]: unknown }
 
 const num = (v: unknown): number | null => {
@@ -88,7 +89,12 @@ export const listParts = (force = false) =>
 /** Customer list, disk-cached 24 h. */
 export const listCustomers = (force = false) =>
   cached<Jb2Customer[]>('reference', 'jb2-prod-customers', () => pageAll('/api/v1/customers', 10000, (r) =>
-    r.customerCode ? { customerCode: String(r.customerCode), customerName: String(r.customerName ?? ''), active: r.active !== false } : null), { force })
+    r.customerCode ? { customerCode: String(r.customerCode), customerName: String(r.customerName ?? ''), active: r.active !== false, website: String(r.website ?? ''), termsCode: String(r.termsCode ?? '') } : null), { force })
+
+/** Customer contacts (name, title, email), disk-cached 24 h. Used to map a sender email to a JB2 account. */
+export const listContacts = (force = false) =>
+  cached<Jb2Contact[]>('reference', 'jb2-prod-contacts', () => pageAll('/api/v1/contacts?object=CUST', 50000, (r) =>
+    r.contactCode && r.email ? { contactCode: String(r.contactCode), contact: String(r.contact ?? ''), title: String(r.title ?? ''), email: String(r.email), active: r.active !== false } : null), { force })
 
 /** Orders carrying a customer PO number (live, not cached: order status changes). */
 export async function findOrdersByPoNumber(poNumber: string): Promise<Jb2Order[]> {
